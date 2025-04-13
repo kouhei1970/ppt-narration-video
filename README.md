@@ -1,14 +1,14 @@
-# PowerPoint ナレーション動画作成ツール
+# PowerPoint スライド解析・ナレーション動画作成ツール
 
-このツールは、PowerPointスライドの画像にナレーションを追加して動画として保存するためのPythonプログラムです。
+このツールは、PowerPointスライドの画像をGPT-4oで解析し、自動的にナレーションスクリプトを生成、VOICEVOXで音声化して動画として保存するPythonプログラムです。
 
 ## 機能
 
-- PowerPointスライド画像（PNG/JPG）にナレーション音声を追加
-- スライドとナレーションを組み合わせて動画を作成
-- スライドごとに異なるナレーションを設定可能
-- ナレーションがないスライドには設定した表示時間を適用
-- 設定ファイルによる詳細なカスタマイズが可能
+- PowerPointスライド画像（PNG）をGPT-4oで解析
+- スライド内容に基づいた講義用ナレーションスクリプトを自動生成
+- VOICEVOXを使用して自然な日本語音声を生成
+- スライドと音声を組み合わせて動画を作成
+- 複数のスライド動画を結合して一つの講義動画を作成
 
 ## インストール方法
 
@@ -17,6 +17,8 @@
 - Python 3.7以上
 - pip (Pythonパッケージマネージャー)
 - FFmpeg（音声・動画処理に必要）
+- VOICEVOX（音声合成エンジン）
+- OpenAI API キー（GPT-4oを使用するため）
 
 ### FFmpegのインストール
 
@@ -37,6 +39,11 @@ sudo apt update
 sudo apt install ffmpeg
 ```
 
+### VOICEVOXのインストール
+
+1. [VOICEVOX公式サイト](https://voicevox.hiroshiba.jp/)からVOICEVOXをダウンロードしてインストール
+2. VOICEVOXエンジンを起動し、ポート50021でサービスが実行されていることを確認
+
 ### Pythonパッケージのインストール
 
 1. このリポジトリをクローンまたはダウンロードします：
@@ -52,165 +59,131 @@ cd ppt-narration-video
 pip install -r requirements.txt
 ```
 
-3. または、パッケージとしてインストールすることもできます：
-
-```bash
-pip install .
-```
-
 ## 使い方
 
-### 基本的な使い方
+### 準備
+
+1. OpenAI APIキーを取得し、`ppt_narration.py`の`OPENAI_API_KEY`変数に設定します
+2. VOICEVOXエンジンを起動します（デフォルトでは`http://localhost:50021`で動作）
+3. PowerPointスライドをPNG形式で保存し、`slides`フォルダに配置します
+   - ファイル名は「スライド1.png」、「スライド2.png」などの形式にしてください
+
+### 実行方法
 
 ```bash
-python ppt_narration.py --slides スライド画像のディレクトリ --narration ナレーション音声のディレクトリ --output 出力動画ファイル
+python ppt_narration.py
 ```
 
-### 例
+### フォルダ構成
 
-```bash
-python ppt_narration.py --slides ./slides --narration ./narration --output presentation.mp4
+プログラムは以下のフォルダを自動的に作成・使用します：
+
+- `slides`: PowerPointスライド画像（PNG）を配置するフォルダ
+- `audios`: 生成された音声ファイル（WAV）が保存されるフォルダ
+- `videos`: 各スライドの動画ファイル（MP4）が保存されるフォルダ
+- `scripts`: 生成されたナレーションスクリプトが保存されるフォルダ
+
+最終的な動画ファイルは、デフォルトでは`lecture_video.mp4`という名前で保存されます。
+
+## カスタマイズ
+
+### VOICEVOX話者の変更
+
+`ppt_narration.py`の`VOICEVOX_SPEAKER_ID`変数を変更することで、異なる話者の音声を使用できます。デフォルトでは`3`（ずんだもん）に設定されています。
+
+```python
+VOICEVOX_SPEAKER_ID = 3  # ← 好みの話者IDに変更
 ```
 
-### 詳細なオプション
+VOICEVOXの話者IDは以下のように対応しています（一部）：
+- 1: 四国めたん（ノーマル）
+- 2: 四国めたん（あまあま）
+- 3: ずんだもん（ノーマル）
+- 4: ずんだもん（あまあま）
+- 8: 春日部つむぎ
+- 10: 雨晴はう
+- 11: 波音リツ
+- 47: もち子さん
 
-```
-usage: ppt_narration.py [-h] --slides SLIDES --narration NARRATION --output OUTPUT [--duration DURATION] [--fps FPS] [--audio-format AUDIO_FORMAT] [--config CONFIG]
+### GPTプロンプトの調整
 
-Create a video from PowerPoint slides with narration.
+ナレーションスクリプト生成のプロンプトは`ppt_narration.py`内の`prompt`変数で定義されています。必要に応じて調整することができます。
 
-options:
-  -h, --help            ヘルプメッセージを表示して終了
-  --slides SLIDES, -s SLIDES
-                        スライド画像（PNGまたはJPG）が含まれるディレクトリ
-  --narration NARRATION, -n NARRATION
-                        ナレーション音声ファイルが含まれるディレクトリ
-  --output OUTPUT, -o OUTPUT
-                        出力動画ファイルのパス
-  --duration DURATION, -d DURATION
-                        ナレーションがないスライドのデフォルト表示時間（秒）
-  --fps FPS             出力動画のフレームレート（FPS）
-  --audio-format AUDIO_FORMAT
-                        音声ファイルのフォーマット（デフォルト: mp3）
-  --config CONFIG, -c CONFIG
-                        JSON設定ファイルへのパス
+### 音声速度の調整
+
+音声の速度は`generate_voice`関数内の`speedScale`パラメータで調整できます。デフォルトでは`1.1`（標準より10%速い）に設定されています。
+
+```python
+query["speedScale"] = 1.1  # ← デフォルトは1.0、これで10%早くなります
 ```
 
 ## ファイル命名規則
 
 ### スライド画像
 
-スライド画像は数字順に並べられます。例：
+スライド画像は「スライド」という接頭辞と番号を含む必要があります：
 
-- `slide1.png`
-- `slide2.png`
+- `スライド1.png`
+- `スライド2.png`
 - ...
-- `slide10.png`
+- `スライド10.png`
 
-### ナレーション音声
+ファイルは自然順（natural sort）で並べられます。
 
-ナレーション音声ファイルは、対応するスライドの名前または番号を含む必要があります。例：
+## 処理の流れ
 
-- `narration_slide1.mp3` または `narration_1.mp3`
-- `narration_slide2.mp3` または `narration_2.mp3`
-- ...
+1. スライド画像の読み込み
+2. GPT-4oによるスライド内容の解析
+3. 講義用ナレーションスクリプトの生成（漢字含む整形文と読み上げ用のひらがな文）
+4. VOICEVOXによる音声合成
+5. スライド画像と音声を組み合わせた動画の作成
+6. すべてのスライド動画の結合
 
-## 設定ファイル（オプション）
-
-JSON形式の設定ファイルを使用して、詳細な設定を行うことができます。例：
-
-```json
-{
-  "slide_settings": {
-    "slide1": {
-      "duration": 10.0
-    },
-    "slide3": {
-      "duration": 8.0
-    }
-  },
-  "output_settings": {
-    "fps": 30,
-    "resolution": [1920, 1080]
-  }
-}
-```
-
-設定ファイルを使用するには：
-
-```bash
-python ppt_narration.py --slides ./slides --narration ./narration --output presentation.mp4 --config config.json
-```
-
-サンプル設定ファイル`example_config.json`がリポジトリに含まれています。
-
-## 使用例
-
-リポジトリには`example.py`というサンプルスクリプトが含まれています。このスクリプトは`PPTNarrationVideo`クラスの使い方を示しています：
-
-```python
-from ppt_narration import PPTNarrationVideo
-
-# 例としてのパラメータ
-slides_dir = "./example/slides"
-narration_dir = "./example/narration"
-output_path = "./example/presentation.mp4"
-
-# PPTNarrationVideoオブジェクトを作成して実行
-ppt_video = PPTNarrationVideo(
-    slides_dir=slides_dir,
-    narration_dir=narration_dir,
-    output_path=output_path,
-    slide_duration=5.0,
-    fps=24,
-    audio_format="mp3"
-)
-
-# 動画を作成
-ppt_video.create_video()
-```
-
-## 準備手順
-
-### PowerPointスライドの準備
+## PowerPointスライドの準備方法
 
 1. PowerPointでプレゼンテーションを作成します
 2. 「ファイル」→「エクスポート」→「画像としてエクスポート」を選択
-3. 形式としてPNGまたはJPGを選択し、すべてのスライドを保存
-4. 保存したスライド画像を`slides`フォルダに配置
-
-### ナレーションの準備
-
-1. 各スライドに対応するナレーションを録音します
-   - Windowsの「ボイスレコーダー」
-   - macOSの「QuickTime Player」
-   - スマートフォンの録音アプリなど
-2. 録音したファイルをMP3形式に変換（必要な場合）
-3. ファイル名をスライドと対応するように命名（例：`narration_slide1.mp3`）
-4. すべてのナレーションファイルを`narration`フォルダに配置
+3. 形式としてPNGを選択し、すべてのスライドを保存
+4. 保存したスライド画像のファイル名を「スライド1.png」、「スライド2.png」などに変更
+5. すべてのスライド画像を`slides`フォルダに配置
 
 ## 注意事項
 
-- ナレーション音声ファイルが見つからないスライドには、デフォルトの表示時間が適用されます
+- OpenAI APIキーが必要です（GPT-4oを使用するため）
+- VOICEVOXエンジンが起動していない場合、音声生成ができません
+- FFmpegがインストールされていない場合、動画処理ができません
 - 出力動画のフォーマットはMP4（H.264）です
 - 大量のスライドや長いナレーションを処理する場合は、十分なメモリが必要です
-- FFmpegがインストールされていない場合、音声処理ができません
+- GPT-4oの使用にはAPIの利用料金が発生します
 
 ## トラブルシューティング
 
 ### よくある問題
 
-1. **「Pillow library is not installed」というエラーが表示される**
+1. **「requests module is not installed」というエラーが表示される**
+   - `pip install requests` を実行してください
+
+2. **「openai module is not installed」というエラーが表示される**
+   - `pip install openai` を実行してください
+
+3. **「natsort module is not installed」というエラーが表示される**
+   - `pip install natsort` を実行してください
+
+4. **「Pillow library is not installed」というエラーが表示される**
    - `pip install Pillow` を実行してください
 
-2. **「MoviePy library is not installed」というエラーが表示される**
-   - `pip install moviepy` を実行してください
+5. **VOICEVOXに接続できない**
+   - VOICEVOXエンジンが起動していることを確認してください
+   - デフォルトでは`http://localhost:50021`で接続を試みます
+   - VOICEVOXのポート設定を確認してください
 
-3. **「Pydub library is not installed」というエラーが表示される**
-   - `pip install pydub` を実行してください
+6. **OpenAI APIエラーが発生する**
+   - APIキーが正しく設定されているか確認してください
+   - APIの利用制限や課金状況を確認してください
 
-4. **音声が再生されない**
-   - FFmpegがインストールされていることを確認してください。インストールされていない場合は、[FFmpegの公式サイト](https://ffmpeg.org/download.html)からダウンロードしてインストールしてください。
+7. **FFmpegエラーが発生する**
+   - FFmpegがインストールされていることを確認してください
+   - コマンドラインで`ffmpeg -version`を実行して、正しくインストールされているか確認してください
 
 ## ライセンス
 
