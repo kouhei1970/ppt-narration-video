@@ -8,6 +8,7 @@
 - スライドとナレーションを組み合わせて動画を作成
 - スライドごとに異なるナレーションを設定可能
 - ナレーションがないスライドには設定した表示時間を適用
+- 設定ファイルによる詳細なカスタマイズが可能
 
 ## インストール方法
 
@@ -15,8 +16,28 @@
 
 - Python 3.7以上
 - pip (Pythonパッケージマネージャー)
+- FFmpeg（音声・動画処理に必要）
 
-### インストール手順
+### FFmpegのインストール
+
+#### Windows
+1. [FFmpeg公式サイト](https://ffmpeg.org/download.html)からWindows用のビルドをダウンロード
+2. ダウンロードしたファイルを解凍し、任意のフォルダに配置
+3. 環境変数のPATHにFFmpegの`bin`フォルダのパスを追加
+
+#### macOS
+Homebrewを使用してインストール:
+```bash
+brew install ffmpeg
+```
+
+#### Linux (Ubuntu/Debian)
+```bash
+sudo apt update
+sudo apt install ffmpeg
+```
+
+### Pythonパッケージのインストール
 
 1. このリポジトリをクローンまたはダウンロードします：
 
@@ -29,6 +50,12 @@ cd ppt-narration-video
 
 ```bash
 pip install -r requirements.txt
+```
+
+3. または、パッケージとしてインストールすることもできます：
+
+```bash
+pip install .
 ```
 
 ## 使い方
@@ -101,6 +128,10 @@ JSON形式の設定ファイルを使用して、詳細な設定を行うこと�
     "slide3": {
       "duration": 8.0
     }
+  },
+  "output_settings": {
+    "fps": 30,
+    "resolution": [1920, 1080]
   }
 }
 ```
@@ -111,11 +142,59 @@ JSON形式の設定ファイルを使用して、詳細な設定を行うこと�
 python ppt_narration.py --slides ./slides --narration ./narration --output presentation.mp4 --config config.json
 ```
 
+サンプル設定ファイル`example_config.json`がリポジトリに含まれています。
+
+## 使用例
+
+リポジトリには`example.py`というサンプルスクリプトが含まれています。このスクリプトは`PPTNarrationVideo`クラスの使い方を示しています：
+
+```python
+from ppt_narration import PPTNarrationVideo
+
+# 例としてのパラメータ
+slides_dir = "./example/slides"
+narration_dir = "./example/narration"
+output_path = "./example/presentation.mp4"
+
+# PPTNarrationVideoオブジェクトを作成して実行
+ppt_video = PPTNarrationVideo(
+    slides_dir=slides_dir,
+    narration_dir=narration_dir,
+    output_path=output_path,
+    slide_duration=5.0,
+    fps=24,
+    audio_format="mp3"
+)
+
+# 動画を作成
+ppt_video.create_video()
+```
+
+## 準備手順
+
+### PowerPointスライドの準備
+
+1. PowerPointでプレゼンテーションを作成します
+2. 「ファイル」→「エクスポート」→「画像としてエクスポート」を選択
+3. 形式としてPNGまたはJPGを選択し、すべてのスライドを保存
+4. 保存したスライド画像を`slides`フォルダに配置
+
+### ナレーションの準備
+
+1. 各スライドに対応するナレーションを録音します
+   - Windowsの「ボイスレコーダー」
+   - macOSの「QuickTime Player」
+   - スマートフォンの録音アプリなど
+2. 録音したファイルをMP3形式に変換（必要な場合）
+3. ファイル名をスライドと対応するように命名（例：`narration_slide1.mp3`）
+4. すべてのナレーションファイルを`narration`フォルダに配置
+
 ## 注意事項
 
 - ナレーション音声ファイルが見つからないスライドには、デフォルトの表示時間が適用されます
 - 出力動画のフォーマットはMP4（H.264）です
 - 大量のスライドや長いナレーションを処理する場合は、十分なメモリが必要です
+- FFmpegがインストールされていない場合、音声処理ができません
 
 ## トラブルシューティング
 

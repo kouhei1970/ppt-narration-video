@@ -1,0 +1,14 @@
+{
+  "slide_settings": {
+    "slide1": {
+      "duration": 10.0
+    },
+    "slide3": {
+      "duration": 8.0
+    }
+  },
+  "output_settings": {
+    "fps": 30,
+    "resolution": [1920, 1080]
+  }
+}
