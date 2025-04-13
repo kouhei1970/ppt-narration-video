@@ -76,7 +76,6 @@ def create_slide_video(image_file, audio_file, output_file):
 
 # === メイン処理 ===
 slide_images = natsorted(glob(f"{SLIDE_IMG_DIR}/スライド*.png"))
-print(slide_images)
 for i, img_path in enumerate(slide_images, 1):
     print(f"▶ Slide {i} - GPT画像解析＆スクリプト生成中...")
 
